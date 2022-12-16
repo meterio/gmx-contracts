@@ -4,25 +4,26 @@ const parse = require('csv-parse')
 
 const network = (process.env.HARDHAT_NETWORK || 'mainnet');
 
-const ARBITRUM = 42161
-const AVALANCHE = 43114
+const METER = 82
+const METERTEST = 83
 
 const {
-  ARBITRUM_URL,
-  AVAX_URL,
-  ARBITRUM_DEPLOY_KEY,
-  AVAX_DEPLOY_KEY
+  METER_URL,
+  METER_TESTNET_URL,
+  METER_TESTNET_DEPLOY_KEY
 } = require("../../env.json")
 
 const providers = {
-  arbitrum: new ethers.providers.JsonRpcProvider(ARBITRUM_URL),
-  avax: new ethers.providers.JsonRpcProvider(AVAX_URL)
+  meter: new ethers.providers.JsonRpcProvider(METER_URL),
+  metertest: new ethers.providers.JsonRpcProvider(METER_TESTNET_URL)
 }
 
 const signers = {
-  arbitrum: new ethers.Wallet(ARBITRUM_DEPLOY_KEY).connect(providers.arbitrum),
-  avax: new ethers.Wallet(ARBITRUM_DEPLOY_KEY).connect(providers.avax)
+  meter: new ethers.Wallet(METER_TESTNET_DEPLOY_KEY).connect(providers.meter),
+  metertest: new ethers.Wallet(METER_TESTNET_DEPLOY_KEY).connect(providers.metertest)
 }
+
+const wallet = signers[network]
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -43,11 +44,11 @@ const readCsv = async (file) => {
 }
 
 function getChainId(network) {
-  if (network === "arbitrum") {
+  if (network === "meter") {
     return 42161
   }
 
-  if (network === "avax") {
+  if (network === "metertest") {
     return 43114
   }
 
@@ -176,10 +177,11 @@ async function updateTokensPerInterval(distributor, tokensPerInterval, label) {
 }
 
 module.exports = {
-  ARBITRUM,
-  AVALANCHE,
+  METER,
+  METERTEST,
   providers,
   signers,
+  wallet,
   readCsv,
   getFrameSigner,
   sendTxn,
