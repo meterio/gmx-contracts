@@ -4,9 +4,20 @@ const parse = require('csv-parse')
 
 const network = (process.env.HARDHAT_NETWORK || 'mainnet');
 
+function bigNumberify(n) {
+  return ethers.BigNumber.from(n)
+}
+function expandDecimals(n, decimals) {
+  return bigNumberify(n).mul(bigNumberify(10).pow(decimals))
+}
 const METER = 82
 const METERTEST = 83
-
+const tokens = {
+  metertest: {
+    address: "0xfAC315d105E5A7fe2174B3EB1f95C257A9A5e271"
+  }
+}
+const nativeToken = tokens[network];
 const {
   METER_URL,
   METER_TESTNET_URL,
@@ -32,9 +43,9 @@ function sleep(ms) {
 const readCsv = async (file) => {
   records = []
   const parser = fs
-  .createReadStream(file)
-  .pipe(parse({ columns: true, delimiter: ',' }))
-  parser.on('error', function(err){
+    .createReadStream(file)
+    .pipe(parse({ columns: true, delimiter: ',' }))
+  parser.on('error', function (err) {
     console.error(err.message)
   })
   for await (const record of parser) {
@@ -113,6 +124,12 @@ async function deployContract(name, args, label, options) {
   console.info(`Deploying ${info} ${contract.address} ${argStr}`)
   await contract.deployTransaction.wait()
   console.info("... Completed!")
+  const json = readTmpAddresses();
+  const lableOrName = label == null ? name : label;
+  json[lableOrName] = {
+    "address": contract.address
+  }
+  writeTmpAddresses(json)
   return contract
 }
 
@@ -182,6 +199,8 @@ module.exports = {
   providers,
   signers,
   wallet,
+  nativeToken,
+  expandDecimals,
   readCsv,
   getFrameSigner,
   sendTxn,

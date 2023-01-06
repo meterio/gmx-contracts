@@ -3,9 +3,6 @@ const { deployContract, contractAt, writeTmpAddresses } = require("../shared/hel
 async function main() {
   const orderBookReader = await deployContract("OrderBookReader", [])
 
-  writeTmpAddresses({
-    orderBookReader: orderBookReader.address
-  })
 }
 
 main()

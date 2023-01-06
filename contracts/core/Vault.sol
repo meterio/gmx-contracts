@@ -40,21 +40,21 @@ contract Vault is ReentrancyGuard, IVault {
     bool public override isSwapEnabled = true;
     bool public override isLeverageEnabled = true;
 
-    IVaultUtils public vaultUtils;
+    IVaultUtils public vaultUtils; // 0x76cf47959dCc16322b7c476de4dCE7868b84B95c VaultUtils
 
-    address public errorController;
+    address public errorController; // 0x0d526187C18F00cF8dAbBF865F65ccFf9e403ef4 VaultErrorController
 
-    address public override router;
-    address public override priceFeed;
+    address public override router; // 0x5F719c2F1095F7B9fc68a68e35B51194f4b6abe8 Router
+    address public override priceFeed; // 0x27e99387af40e5CA9CE21418552f15F02C8C57E7 VaultPriceFeed
 
-    address public override usdg;
-    address public override gov;
+    address public override usdg; // 0xc0253c3cC6aa5Ab407b5795a04c28fB063273894
+    address public override gov; // 0x8Ea12810271a0fD70bBEB8614B8735621abC3718 Timelock
 
-    uint256 public override whitelistedTokenCount;
+    uint256 public override whitelistedTokenCount; // 7
 
     uint256 public override maxLeverage = 50 * 10000; // 50x
 
-    uint256 public override liquidationFeeUsd;
+    uint256 public override liquidationFeeUsd; // 5e30
     uint256 public override taxBasisPoints = 50; // 0.5%
     uint256 public override stableTaxBasisPoints = 20; // 0.2%
     uint256 public override mintBurnFeeBasisPoints = 30; // 0.3%
@@ -62,13 +62,13 @@ contract Vault is ReentrancyGuard, IVault {
     uint256 public override stableSwapFeeBasisPoints = 4; // 0.04%
     uint256 public override marginFeeBasisPoints = 10; // 0.1%
 
-    uint256 public override minProfitTime;
+    uint256 public override minProfitTime; // 10800
     bool public override hasDynamicFees = false;
 
     uint256 public override fundingInterval = 8 hours;
-    uint256 public override fundingRateFactor;
-    uint256 public override stableFundingRateFactor;
-    uint256 public override totalTokenWeights;
+    uint256 public override fundingRateFactor; // 100
+    uint256 public override stableFundingRateFactor; // 100
+    uint256 public override totalTokenWeights; // 100001
 
     bool public includeAmmPrice = true;
     bool public useSwapPricing = false;
@@ -76,12 +76,19 @@ contract Vault is ReentrancyGuard, IVault {
     bool public override inManagerMode = false;
     bool public override inPrivateLiquidationMode = false;
 
-    uint256 public override maxGasPrice;
+    uint256 public override maxGasPrice; // 0
 
     mapping (address => mapping (address => bool)) public override approvedRouters;
     mapping (address => bool) public override isLiquidator;
-    mapping (address => bool) public override isManager;
+    mapping (address => bool) public override isManager; // GlpManager
 
+    // 0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7 WAVAX
+    // 0x50b7545627a5162F82A992c33b87aDc75187B218 WBTC.e
+    // 0x49D5c2BdFfac6CE2BFdB6640F4F80f226bc10bAB WETH.e
+    // 0x130966628846BFd36ff31a822705796e8cb8C18D Magic Internet Money (MIM)
+    // 0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664 USDC.e
+    // 0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E USDC
+    // 0x152b9d0FdC40C096757F570A51E494bd4b943E50 BTC.b
     address[] public override allWhitelistedTokens;
 
     mapping (address => bool) public override whitelistedTokens;
@@ -218,12 +225,12 @@ contract Vault is ReentrancyGuard, IVault {
     }
 
     function initialize(
-        address _router,
-        address _usdg,
-        address _priceFeed,
-        uint256 _liquidationFeeUsd,
-        uint256 _fundingRateFactor,
-        uint256 _stableFundingRateFactor
+        address _router,                     // 0x5F719c2F1095F7B9fc68a68e35B51194f4b6abe8
+        address _usdg,                       // 0xc0253c3cC6aa5Ab407b5795a04c28fB063273894
+        address _priceFeed,                  // 0x131238112aa25c0D8CD237a6c384d1A86D2BB152
+        uint256 _liquidationFeeUsd,          // 2e30
+        uint256 _fundingRateFactor,          // 100
+        uint256 _stableFundingRateFactor     // 100
     ) external {
         _onlyGov();
         _validate(!isInitialized, 1);
@@ -461,6 +468,7 @@ contract Vault is ReentrancyGuard, IVault {
 
         uint256 price = getMinPrice(_token);
 
+        // usdgAmount = tokenAmount * price / 1e30
         uint256 usdgAmount = tokenAmount.mul(price).div(PRICE_PRECISION);
         usdgAmount = adjustForDecimals(usdgAmount, _token, usdg);
         _validate(usdgAmount > 0, 18);
@@ -854,7 +862,9 @@ contract Vault is ReentrancyGuard, IVault {
         }
 
         uint256 fundingRate = getNextFundingRate(_collateralToken);
+        // cumulativeFundingRates[_collateralToken] = cumulativeFundingRates[_collateralToken] + fundingRate
         cumulativeFundingRates[_collateralToken] = cumulativeFundingRates[_collateralToken].add(fundingRate);
+        // lastFundingTimes[_collateralToken] = block.timestamp / 8 hours * 8 hours
         lastFundingTimes[_collateralToken] = block.timestamp.div(fundingInterval).mul(fundingInterval);
 
         emit UpdateFundingRate(_collateralToken, cumulativeFundingRates[_collateralToken]);
@@ -863,11 +873,13 @@ contract Vault is ReentrancyGuard, IVault {
     function getNextFundingRate(address _token) public override view returns (uint256) {
         if (lastFundingTimes[_token].add(fundingInterval) > block.timestamp) { return 0; }
 
+        // intervals = (block.timestamp - lastFundingTimes[_token]) / 8 hours
         uint256 intervals = block.timestamp.sub(lastFundingTimes[_token]).div(fundingInterval);
         uint256 poolAmount = poolAmounts[_token];
         if (poolAmount == 0) { return 0; }
 
         uint256 _fundingRateFactor = stableTokens[_token] ? stableFundingRateFactor : fundingRateFactor;
+        // _fundingRateFactor * reservedAmounts[_token] * intervals / poolAmount
         return _fundingRateFactor.mul(reservedAmounts[_token]).mul(intervals).div(poolAmount);
     }
 

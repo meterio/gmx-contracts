@@ -19,7 +19,6 @@ async function main() {
   console.log("lastPrice_MTRG:", lastPrice_MTRG.toString());
 
   const fastPriceEvents = await contractAt("FastPriceEvents", FastPriceEvents.address);
-  await fastPriceEvents.setIsPriceFeed("0x1381C573b97Bf393A81fA42760DD21E109d8092B", true);
   await sendTxn(fastPriceEvents.emitPriceEvent(MTR, lastPrice_MTR), "FastPriceEvents.emitPriceEvent(MTR,lastPrice_MTR)")
   await sendTxn(fastPriceEvents.emitPriceEvent(MTRG, lastPrice_MTRG), "FastPriceEvents.emitPriceEvent(MTRG,lastPrice_MTRG)")
 }
